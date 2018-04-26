@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Map</title>
+
+
+  <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.2/mapbox-gl.js'></script>
+  <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.2/mapbox-gl.css' rel='stylesheet' />
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
+
+  <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+    crossorigin="anonymous"></script>
+
+  <script src="js/wNumb.js"></script>
+
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
+  <!-- In <head> -->
+  <link href="js/nouislider.min.css" rel="stylesheet">
+  <link href='//mapbox.com/base/latest/base.css' rel='stylesheet' />
+
+
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4"
+    crossorigin="anonymous">
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js" integrity="sha384-uefMccjFJAIv6A+rW+L4AHf99KvxDjWSu1z9VI8SKNVmz4sk7buKt/6v9KI65qnm"
+    crossorigin="anonymous"></script>
+
+
+  <style type="text/css">
+    html,
+    body {
+      height: 100%;
+    }
+
+    #panInfo {
+      height: 100%;
+      background: #eeeeee;
+      overflow-y: auto
+    }
+
+    #map {
+      width: 100%;
+      height: 100%
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    .map-overlay {
+      font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+      position: absolute;
+      width: 25%;
+      top: 0;
+      right: 0;
+      padding: 10px;
+    }
+
+    .map-overlay .map-overlay-inner {
+      background-color: #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.20);
+      border-radius: 3px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    #slider {
+      background-color: transparent;
+      display: inline-block;
+      width: 100%;
+      position: relative;
+      margin: 0;
+      cursor: ew-resize;
+    }
+
+    #container2 {
+      clear: left;
+      float: left;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #container1 {
+      float: left;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      right: 50%;
+    }
+
+    #col1 {
+      float: left;
+      width: 30%;
+      height: 100%;
+      position: relative;
+      left: 52%;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    #col2 {
+      float: left;
+      width: 70%;
+      height: 100%;
+      position: relative;
+      left: 56%;
+      overflow: hidden;
+    }
+
+    #modal {
+
+      width: 90%;
+      height: 650px;
+      position: absolute;
+      background: white;
+      padding: 10px;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+      border: 1px solid red;
+      z-index: 100;
+      display: none;
+
+    }
+
+    #compareOptions {
+      width: 40%;
+      height: 30%;
+      position: absolute;
+      background: white;
+      padding: 10px;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+      border: 1px solid red;
+      z-index: 100;
+      display: none;
+    }
+
+    input[type=text] {
+      padding: 0px;
+      margin: 0px;
+      width: 100px;
+      height: auto;
+    }
+
+    #compareData {
+      display: table;
+      margin: 0 auto;
+    }
+
+    .divTable {
+      display: table;
+      width: 100%;
+    }
+
+    .divTableRow {
+      display: table-row;
+    }
+
+    .divTableHeading {
+      background-color: #EEE;
+      display: table-header-group;
+    }
+
+    .divTableCell,
+    .divTableHead {
+      border: 1px solid #999999;
+      display: table-cell;
+      padding: 3px 10px;
+      max-width: 200px;
+    }
+
+    .divTableHeading {
+      background-color: #EEE;
+      display: table-header-group;
+      font-weight: bold;
+    }
+
+    .divTableFoot {
+      background-color: #EEE;
+      display: table-footer-group;
+      font-weight: bold;
+    }
+
+    .divTableBody {
+      display: table-row-group;
+    }
+  </style>
+</head>
+
+<body>
+  <script src="js/nouislider.min.js"></script>
+
+  <div id="modal">
+    <h1 style="display:inline">Compare</h1>
+    <button id="closeCompare">Close</button>
+    <br>
+    <div id="compareData"></div>
+  </div>
+
+  <div id="compareOptions">
+    <h1 style="display:inline">Options</h1>
+    <button id="closeCompareOptions" style="background-color: red">Save and close</button>
+    <br> Price limit from:
+    <input type="text" id="priceFrom"> to:
+    <input type="text" id="priceTo">
+  </div>
+
+  <div class="container-fluid h-100">
+    <div class="row justify-content-center h-100">
+
+      <div class="col-4" id="panInfo">
+        <button id="showCompare" style="margin:10px;">Show Compare</button>
+        <button id="showCompareOptions" style="margin:10px;">Options</button>
+        <h2>Info:</h2>
+        <div id="info"></div>
+      </div>
+
+      <div class="col-8">
+        <div id='map'></div>
+        <div style=" position: absolute; width: 100px; bottom: 0; left: 0; padding: 30px 30px;">
+          <div id="range"></div>
+        </div>
+
+        <div style="position: absolute; top:10px;right:80px;">
+          <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-secondary active">
+              <input type="radio" id="all" class="commFilter" checked> All
+            </label>
+            <label class="btn btn-secondary">
+              <input type="radio" id="commercial" class="commFilter"> Commercial
+            </label>
+            <label class="btn btn-secondary">
+              <input type="radio" id="residential" class="commFilter"> Residential
+            </label>
+          </div>
+        </div>
+
+        <div style="position: absolute; top:50px;right:80px;">
+          <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-secondary active">
+              <input type="radio" id="all" class="useFilter" checked> All
+            </label>
+            <label class="btn btn-secondary">
+              <input type="radio" id="condos" class="useFilter"> Condos
+            </label>
+            <label class="btn btn-secondary">
+              <input type="radio" id="houses" class="useFilter"> Houses
+            </label>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    //canadaBenderlio
+    mapboxgl.accessToken =
+      'pk.eyJ1IjoiY2FuYWRhYmVuZGVybGlvIiwiYSI6ImNqZ2J2Ymc4ejJmdDYzMmxoMXByMjVxZHMifQ.D3giyTg2d4JxtQFg3bxZoA';
+    var map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/canadabenderlio/cjgbvbvnh0ua02sqs4sdez3k9',
+
+      center: [-120.36603539685188, 50.68667605749022],
+      zoom: 11.6
+    });
+
+    // Add zoom and rotation controls to the map.
+    map.addControl(new mapboxgl.NavigationControl());
+
+    var excelData = [];
+    var ADAUID = [];
+
+    var bounds = new mapboxgl.LngLatBounds();
+    var price = {
+      min: 0,
+      max: 0
+    };
+    var priceArray = [];
+    var info = document.getElementById("info")
+    var currentClickID = 0;
+    var compare = new ObservableArray(updateCompareNumber);
+    var compareParams = {
+      "Area Code": false,
+      "Area Description": false,
+      "Jur Code": false,
+      "Jur Description": false,
+      "Roll Number": false,
+      "Neigh Code": false,
+      "Neigh Description": true,
+      "Property Address": false,
+      "Street Name": true,
+      "Legal Description": false,
+      "PID": true,
+      "Primary Actual Use Code": false,
+      "Primary Actual Use Desc": true,
+      "Pred Manual Class Code": false,
+      "Pred Manual Class Desc": false,
+      "Land Actual Value": false,
+      "Improvement Actual Value": false,
+      "Total Actual Value": false,
+      "Land Dimension": true,
+      "Land Size": true,
+      "Land Depth": false,
+      "Document Number 1": false,
+      "Sale Date 1": true,
+      "Sale Price 1": true,
+      "Sale Type 1": false,
+      "Sale Category 1": false,
+      "Sale Status 1": false,
+      "Multi Sale Flag 1": false,
+      "Document No 2": false,
+      "Sale Date 2": false,
+      "Sale Price 2": false,
+      "Sale Type 2": false,
+      "Sale Category 2": false,
+      "Sale Status 2": false,
+      "Multi Sale Flag 2": false,
+      "Document No 3": false,
+      "Sale Date 3": false,
+      "Sale Price 3": false,
+      "Sale Type 3": false,
+      "Sale Category 3": false,
+      "Sale Status 3": false,
+      "Multi Sale Flag 3": false,
+      "lat": false,
+      "lng": false
+    }
+    var images = {};
+    var slider;
+    var priceInputFrom = document.getElementById("priceFrom")
+    var priceInputTo = document.getElementById("priceTo")
+
+    function ObservableArray(callback) {
+      var arr = [];
+      arr.push = function () {
+        console.log("PUSHING", arguments);
+        var a = Array.prototype.push.apply(this, arguments);
+        if (callback) callback();
+        return a;
+      }
+      arr.splice = function () {
+        console.log("Splice", this, arguments);
+        var a = Array.prototype.splice.apply(this, arguments);
+        if (callback) callback();
+        return a;
+      }
+
+      return arr;
+    }
+
+
+    /* save params to the storage*/
+    if (typeof (Storage) !== "undefined") {
+      try {
+        price = JSON.parse(localStorage.getItem("price")) || {
+          min: 0,
+          max: 0
+        };
+
+        //update option inputs
+        priceInputFrom.value = price.min
+        priceInputTo.value = price.max
+
+      } catch (error) {
+        console.log("Error: local storage error")
+      }
+    }
+
+
+
+
+    //initial filters state
+    var filters = {
+      rating: [0, 5],
+      commercialType: "all",
+      useType: "all"
+    }
+
+
+    map.on('load', function () {
+
+      map.addSource('pin', {
+        'type': 'geojson',
+        'data': {
+          'type': 'FeatureCollection',
+          'features': [],
+        },
+      });
+      map.addLayer({
+        id: "area_layer",
+        type: "circle",
+        source: "pin",
+        paint: {
+          "circle-color": "red",
+          "circle-radius": 5,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "white",
+
+        }
+      });
+
+      /*
+      map.addLayer({
+          id: "area_layer_hover",
+          type: "circle",
+          source: "pin",
+          paint: {
+              "circle-color": "blue",
+              "circle-radius": 5,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "white",
+          },
+          "filter": ["==", "id", ""]
+      });
+      */
+
+      d3.csv("csv/Map data from Stats Canada.csv", function (err, data) {
+        console.log('', data);
+        excelData = data;
+      })
+      d3.csv("csv/ADAUID.csv", function (err, data) {
+        console.log('', data);
+        data.map(function (item) {
+          ADAUID[item.Code] = item.Name;
+        });
+      })
+
+
+      d3.csv("csv/april_2018_geocoded.csv", function (err, data) {
+
+        console.log("DAta", data)
+
+        data = data.filter(function (item) { // remove all except Kamloops
+          return item['Jur Description'] === "City of Kamloops" && item['lat'] > 0
+        })
+
+        console.log("DAta", data)
+
+
+
+        pins = data.map(function (pin, key) {
+          bounds.extend([pin.lng, pin.lat]);
+          //console.log('',key,"|",pin['Sale Price 1']);
+
+          priceArray.push(+pin['Sale Price 1']);
+          pin.id = key;
+          pin.title = pin['Document No 2']
+          pin.addr = pin['Property Address']
+          pin.descr = pin['Legal Description']
+          pin.price = +pin['Sale Price 1']
+
+          pin.commercialType = pin['Neigh Description'] === 'Downtown Retail, Comm, Indust' ? "commercial" :
+            "residential"
+
+          pin.useType = "other";
+          if (pin['Primary Actual Use Desc'] === 'Strata-Lot Residence (Condominium)') {
+            pin.useType = "condos";
+          }
+          if (pin['Primary Actual Use Desc'] === 'Single Family Dwelling') {
+            pin.useType = "houses";
+          }
+
+
+          return turf.point([+pin.lng, +pin.lat], pin);
+        })
+        var collection = turf.featureCollection(pins);
+        map.getSource('pin').setData(collection);
+
+        console.log('Price', price);
+
+        if (price.min === 0 && price.max === 0) {
+          price.min = Math.min.apply(Math, priceArray);
+          price.max = Math.max.apply(Math, priceArray);
+        }
+        console.log(price)
+        createSlider(price);
+
+        map.fitBounds(bounds, {
+          padding: 100
+        })
+
+      });
+
+      map.on('mouseenter', 'area_layer', function (e) {
+        map.getCanvas().style.cursor = 'pointer';
+        //map.setFilter("area_layer_hover", ["==", "id", e.features[0].properties.id]);
+      });
+      map.on('mouseleave', 'area_layer', function () {
+        map.getCanvas().style.cursor = '';
+        //map.setFilter("area_layer_hover", ["==", "id", ""]);
+      });
+
+      // map.on('click', "dataLayer", function (e) {
+      //   console.log(e.features["0"].properties);
+
+      //   var feature = map.queryRenderedFeatures(e.point, {layers: ['dataLayer']});
+      //   console.log('!!!',feature["0"].properties);
+
+      // })
+
+      map.on('click', 'area_layer', function (e) {
+
+        var prop = e.features["0"].properties;
+        var whereToLookLatLng = {
+          lng: +prop.lng,
+          lat: +prop.lat
+        };
+        var show = false;
+
+        console.log(e, e.features["0"].properties);
+        // console.log(whereToLookLatLng);
+        // console.log(currentClickID);
+
+        /* second click will open the infoTab */
+        if (currentClickID === e.features["0"].properties.id) {
+          show = true;
+        }
+        currentClickID = e.features["0"].properties.id;
+        /* second click will open the infoTab */
+
+        var params = "";
+
+        Object.keys(prop).map(function (key, index) {
+          //console.log(key,pin[key])
+          if (compareParams[key]) {
+            params += "" + key + ":" + prop[key] + "<br>";
+          }
+        });
+
+        var sv = new google.maps.StreetViewService();
+        sv.getPanorama({
+          location: whereToLookLatLng,
+          radius: 50
+        }, function (data) {
+
+          var text = "No Image available";
+          try {
+            //console.log(data)
+            var ManLatLng = data.location.latLng;
+            //console.log(ManLatLng)
+            var heading = google.maps.geometry.spherical.computeHeading(ManLatLng, new google.maps.LatLng(
+              whereToLookLatLng.lat, whereToLookLatLng.lng));
+            //console.log(heading)
+
+            var img = 'https://maps.googleapis.com/maps/api/streetview?size=400x400&location=' + ManLatLng.lat() +
+              ',' + ManLatLng.lng() + '&heading=' + heading +
+              '&key=AIzaSyABI531IMktJH-Nq24irDSdENZt7LKEHsc';
+            text = '<img style="width:300px;" src="' + img + '">';
+            console.log(img)
+            if (show) {
+              info.innerHTML = text + "<h2>Descr:</h2>" + params
+            }
+          } catch (error) {
+            console.log(error)
+            info.innerHTML = "<h2>No data from streetview:</h2>" + params
+          }
+
+          // get additional data from EXCEL csv file 
+          var resultText = "";
+          var displayData = {
+            "Name": true,
+            "Average Total Income 2015 data": true,
+            "Average Income for Full Time workers": true,
+            "Non-official languages": false,
+            "Citizens": true,
+            "Aged under 18": true,
+            "Non-citizens": false,
+            "Immigrants": false,
+            "Aboriginal identity": false,
+            "Number of households": true,
+            "Owned": true,
+            "Rented": true,
+            "2 bedrooms or less": true,
+            "3 bedrooms or more": true,
+            "Average number of rooms": true,
+            "Average value of dwellings": true,
+            "Unemployment rate": true,
+          }
+          var feature = map.queryRenderedFeatures(e.point, {
+            layers: ['dataLayer']
+          });
+          if (feature["0"].properties['ADAUID']) {
+
+            var result;
+            var name = ADAUID[feature["0"].properties['ADAUID']];
+            var data = excelData.forEach(function (item) {
+              console.log('', item.Name, name);
+              if (item.Name === name) {
+                result = item;
+              }
+            })
+
+            //calculate % of Number of households
+            var resultCopy = Object.assign({}, result);
+
+            resultCopy['Owned'] = getPercent(result['Owned'], result['Number of households']);
+            resultCopy['Rented'] = getPercent(result['Rented'], result['Number of households']);
+            resultCopy['2 bedrooms or less'] = getPercent(result['2 bedrooms or less'], result['Number of households']);
+            resultCopy['3 bedrooms or more'] = getPercent(result['3 bedrooms or more'], result['Number of households']);
+
+            console.log('', result);
+
+            var res = Object.keys(displayData).filter(function (item) {
+              return displayData[item]
+            }).map(function (item) {
+              return item + ': ' + resultCopy[item]
+            }).join("<br>")
+
+            console.log('', res);
+            if (show) { // show is dbl click 
+              info.innerHTML += "<h2>Region data:</h2>" + res
+            }
+
+          }
+
+
+          var popup = new mapboxgl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML(text + '<br>' +
+              'Sale date 1: ' + prop['Sale Date 1'] +
+              '<br>Sale price 1: ' + prop['Sale Price 1'] +
+              '<br><button class="compare" imgUrl="' + img + '" pinId="' + e.features["0"].properties.id +
+              '">Add to complare</button>')
+            .addTo(map);
+        });
+      })
+    });
+
+    $(document).ready(function () {
+
+      $(document).on("click", ".compare", function () {
+        var id = +$(this).attr("pinId");
+        var imgUrl = $(this).attr("imgUrl");
+        console.log(id, imgUrl)
+        if (compare.indexOf(id) === -1) {
+          compare.push(id);
+          images[id] = {
+            imgUrl: imgUrl
+          }
+        }
+        //updateCompareNumber();
+      });
+
+
+      /*  ============ POPUP =============== */
+      var compareData = document.getElementById("compareData");
+      $(document).on("click", "#showCompare", function () {
+
+        $("#modal").css("display", "block");
+        buildComapreData()
+      });
+      $(document).on("click", "#closeCompare", function () {
+        $("#modal").css("display", "none");
+      });
+
+      function buildComapreData() {
+        var text = "";
+        if (compare.length > 0) {
+
+          //build table names list
+          var rowNameList = {
+            img: [],
+            remove: []
+          };
+          Object.keys(compareParams).map(function (name) {
+            if (compareParams[name]) {
+              rowNameList[name] = [];
+            }
+          })
+          compare.map(function (id) {
+            Object.keys(rowNameList).map(function (name) {
+              if (rowNameList.hasOwnProperty(name) && pins[id].properties.hasOwnProperty(name)) {
+                rowNameList[name].push(pins[id].properties[name]);
+              }
+            })
+            rowNameList['remove'].push('<button class="remove" pinId="' + id + '" >remove</button>');
+            rowNameList['img'].push('<img style="width:200px;" src="' + images[id].imgUrl + '">');
+          })
+
+          //console.log('', rowNameList);
+
+          // draw table 
+          Object.keys(rowNameList).map(function (name) {
+            //console.log('', name, rowNameList[name]);
+            text += '<div class="divTableRow">';
+            text += '<div class="divTableCell">' + name + '</div>'
+            text += rowNameList[name].map(function (item) {
+              return '<div class="divTableCell">' + item + '</div>'
+            }).join("")
+            text += '</div>';
+
+          })
+
+        }
+        compareData.innerHTML = text
+      }
+      /*  ============ POPUP =============== */
+
+
+      /* compare options part*/
+      var compareOptionsData = document.getElementById("compareOptionsData");
+      $(document).on("click", "#showCompareOptions", function () {
+        var text = "";
+        $("#compareOptions").css("display", "block");
+
+      });
+
+
+      $(document).on("click", ".remove", function () {
+        var id = $(this).attr("pinId")
+        console.log(id)
+
+        //$("#pin_" + id).css("display", "none"); // hide from compare div
+        console.log('', compare);
+
+        compare.splice(compare.indexOf(parseInt(id)), 1) // remove from compare array
+        console.log('', compare);
+        buildComapreData()
+
+      });
+    });
+
+    function updateCompareNumber() {
+      console.log("UPDATING COMPARE ")
+      var number = compare.length > 0 ? compare.length : "";
+      $("#showCompare").html('Show compare ' + number)
+    }
+
+    $('.commFilter').change(function (e) {
+      console.log('', this.id);
+      filters.commercialType = this.id;
+      setFilters();
+    });
+    $('.useFilter').change(function (e) {
+      console.log('', this.id);
+      filters.useType = this.id;
+      setFilters();
+    });
+
+    function setFilters() {
+
+      console.log('', filters);
+      var allFilters = ['all'];
+      var filterPrice = [
+        ["<=", 'price', parseFloat(filters.rating[1])],
+        [">=", 'price', parseFloat(filters.rating[0])]
+      ];
+
+      if (filters.commercialType !== 'all') {
+        var filterCommercial = ['==', 'commercialType', filters.commercialType];
+        map.setFilter('area_layer', ['all', filterPrice[0], filterPrice[1], filterCommercial]);
+      } else {
+        map.setFilter('area_layer', ['all', filterPrice[0], filterPrice[1]]);
+      }
+
+
+      allFilters.push(filterPrice[0])
+      allFilters.push(filterPrice[1])
+      if (filters.commercialType !== 'all') {
+        allFilters.push(['==', 'commercialType', filters.commercialType])
+      }
+      if (filters.useType !== 'all') {
+        allFilters.push(['==', 'useType', filters.useType])
+      }
+      console.log('', allFilters);
+      map.setFilter('area_layer', allFilters);
+
+    }
+
+    $(document).on("click", "#closeCompareOptions", function () {
+      $("#compareOptions").css("display", "none");
+
+      console.log('', priceInputFrom, priceInputTo);
+
+      if (parseInt(priceInputTo.value) > 0) {
+        price.min = parseInt(priceInputFrom.value);
+        price.max = parseInt(priceInputTo.value);
+      }
+
+
+      //update slider 
+      slider.updateOptions({
+        start: [+price.min, +price.max],
+        connect: true, // Display a colored bar between the handles
+        direction: 'rtl', // Put '0' at the bottom of the slider
+        orientation: 'vertical', // Orient the slider vertically
+        step: 1000,
+        tooltips: [wNumb({
+          decimals: 0
+        }), wNumb({
+          decimals: 0
+        })],
+        range: {
+          'min': price.min,
+          'max': price.max
+        },
+      });
+
+      /* save params to the storage*/
+      if (typeof (Storage) !== "undefined") {
+        localStorage.setItem("price", JSON.stringify(price));
+      } else {
+        alert("Sorry! No Web Storage support..");
+      }
+
+    });
+
+
+    //SLIDER
+    function createSlider(price) {
+
+      filters.rating = [parseFloat(price.min), parseFloat(price.max)]; //def value
+
+      var range = document.getElementById('range');
+      range.style.height = '400px';
+      range.style.margin = '0 auto 30px';
+      slider = noUiSlider.create(range, {
+        start: [+price.min, +price.max], // 4 handles, starting at...
+        connect: true, // Display a colored bar between the handles
+        direction: 'rtl', // Put '0' at the bottom of the slider
+        orientation: 'vertical', // Orient the slider vertically
+        step: 1000,
+        tooltips: [wNumb({
+          decimals: 0
+        }), wNumb({
+          decimals: 0
+        })],
+        range: {
+          'min': +price.min,
+          'max': +price.max
+        },
+      });
+      range.noUiSlider.on('set', function (values, handle) {
+        console.log(values, parseFloat(values[0]), +values[0])
+        filters.rating = [parseFloat(values[0]), parseFloat(values[1])];
+        setFilters()
+      });
+    }
+
+
+    //helpers 
+    function round(number, precision) {
+      var shift = function (number, precision, reverseShift) {
+        if (reverseShift) {
+          precision = -precision;
+        }
+        var numArray = ("" + number).split("e");
+        return +(numArray[0] + "e" + (numArray[1] ? (+numArray[1] + precision) : precision));
+      };
+      return shift(Math.round(shift(number, precision, false)), precision, true);
+    }
+    function getPercent(part, all) {
+      part = parseInt(part);
+      all = parseInt(all);
+      console.log('',part, all,round( ((part * 100) / all), 0));
+
+      return round( ((part * 100) / all), 0) + '%'
+    }
+  </script>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAVoriNkoN9okoQFodBEJvopvUxAMq0nlE&libraries=visualization,places,geometry"></script>
+</body>
+
+</html>
